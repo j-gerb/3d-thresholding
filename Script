@@ -1,0 +1,84 @@
+/* This script runs the Local Thresholding Algorithms included in ImageJ on three 
+ * orthogonal reconstructions of the source volume. The resulting volume can be either 
+ * automatically binarized or kept non-binary, allowing for further processing. 
+ */
+
+width=512; height=512;
+Dialog.create("3D - Thresholding");
+Dialog.addChoice("Algorithm:", newArray("Bernsen", "Contrast", "Mean", "Median", "MidGrey", "Niblack", "Otsu", "Phansalkar", "Sauvola"));
+Dialog.addNumber("Radius:", 15);
+Dialog.addNumber("Parameter 1:", 0);
+Dialog.addNumber("Parameter 2:", 0);
+Dialog.addCheckbox("Make results binary", true);
+Dialog.addCheckbox("White objects on black background", true);
+Dialog.show();
+r = Dialog.getNumber();
+p1 = Dialog.getNumber();
+p2 = Dialog.getNumber();
+alg = Dialog.getChoice();
+bin = Dialog.getCheckbox();
+white = Dialog.getCheckbox();
+w=" ";
+if (white==true) w = " white ";
+  
+setBatchMode(true);
+run("Duplicate...", "title=8bit duplicate");
+run("8-bit");
+rename("recon1");
+
+run("Duplicate...", "title=recon2 duplicate");
+run("Duplicate...", "title=recon3 duplicate");
+
+selectWindow("recon1");
+run("Auto Local Threshold", "method=" + alg +" radius=" + r +" parameter_1=" + p1 +" parameter_2="+p2+w+ "stack");
+run("Subtract...", "value=170 stack");
+rename("thr1");
+
+selectWindow("recon2");
+run("Reslice [/]...", "output=1.000 start=Left flip rotate avoid");
+run("Auto Local Threshold", "method=" + alg +" radius=" + r +" parameter_1=" + p1 +" parameter_2="+p2+w+"stack");
+run("Reslice [/]...", "output=0.100 start=Right rotate avoid");
+run("Subtract...", "value=170 stack");
+rename("thr2");
+selectWindow("Reslice of recon2");
+close();
+selectWindow("recon2");
+close();
+
+selectWindow("recon3");
+run("Reslice [/]...", "output=1.00 start=Top flip avoid");
+run("Auto Local Threshold", "method=" + alg +" radius=" + r +" parameter_1=" + p1 +" parameter_2="+p2+w+"stack");
+run("Reslice [/]...", "output=0.100 start=Bottom avoid");
+run("Subtract...", "value=170 stack");
+rename("thr3");
+selectWindow("Reslice of recon3");
+close();
+selectWindow("recon3");
+close();
+
+imageCalculator("Add create stack", "thr1","thr2");
+imageCalculator("Add create stack", "Result of thr1","thr3");
+rename("3D - Thresholded");
+
+if (bin==true){
+run("Auto Threshold", "method=Default white stack use_stack_histogram");
+rename("3D - Thresholded Binary");
+}
+
+selectWindow("thr1");
+close();
+selectWindow("thr2");
+close();
+selectWindow("thr3");
+close();
+selectWindow("Result of thr1");
+close();
+
+setBatchMode(false);
+if (bin==true)
+{
+	selectWindow("3D - Thresholded Binary");
+}
+else{
+	selectWindow("3D - Thresholded");
+}
